@@ -216,6 +216,6 @@ output: D:/音声/目录
 
 ## 参考文献
 - [prekikoeru](https://github.com/Sakyoriii/prekikoeru)
-- [dlsite-doujin-renamer](https://github.com/dlsite-com-ga/dlsite-doujin-renamer)
+- [dlsite-doujin-renamer](https://github.com/yodhcn/dlsite-doujin-renamer)
 - [SteganographierGUI](https://github.com/cenglin123/SteganographierGUI)
 - [dlonsei-formatter](https://github.com/somebelly/dlonsei-formatter)
