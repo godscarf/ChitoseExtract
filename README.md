@@ -1,27 +1,26 @@
 # ChitoseExtract v1.0
 
-面向 **DLsite 同人音声** 的 Windows 桌面批处理工具。支持将下载的压缩包自动走完完整流水线：
-
-**解压 → 归档 → 过滤 → 重命名 → 转 FLAC → 写入元数据**
-
-程序基于 Python + Tkinter 开发，可打包为独立 exe，无需单独安装 Python 即可运行。
-
+面向 **DLsite 同人音声** 的 Windows 桌面批处理工具。图形化主程序和配置界面。
+主要基于[prekikoeru](https://github.com/Sakyoriii/prekikoeru)和[dlsite-doujin-renamer](https://github.com/dlsite-com-ga/dlsite-doujin-renamer)进行扩展功能，修复bug和提升易用性。
+主要开发方式为鞭打ai
 ---
-<img width="1599" height="935" alt="image" src="https://github.com/user-attachments/assets/ccafc5fc-26b4-439a-83d7-984af797587a" />
 
 ## 功能概览
 
 | 步骤 | 说明 |
 |------|------|
-| **解压** | 支持 ZIP / 7z / RAR 及分卷、伪装扩展名、嵌套压缩包、密码库自动尝试 |
-| **归档** | 将未识别 RJ 号的作品移入资源库，或整理到指定工作目录 |
+| **解压** | 常见压缩包格式改后缀、伪装扩展名、嵌套压缩包、隐写压缩包、分卷压缩等一键通杀，密码库多进程跑字典秒碰撞出密码 |
+| **归档** | 识别RJ号匹配音声作品放入音声库，将未识别 RJ 号的作品移入资源库，或整理到指定工作目录 |
 | **过滤** | 按正则规则删除无 SE 版、MP3 冗余、宣传文件等 |
 | **重命名** | 根据 RJ 号从 DLsite 拉取元数据，按模板重命名文件夹 |
-| **转 FLAC** | 将 WAV / AIF 转为 FLAC（内置 flac、ffmpeg-minimal） |
+| **转 FLAC** | 将 WAV 转为 FLAC 保持高音质同时减少磁盘占用 |
 | **写入元数据** | 写入标签与封面，便于本地播放器识别 |
+所有功能都可以自选是否在流程中启用，也可单独使用任一功能
+## 程序界面预览
+<img width="1456" height="1042" alt="image" src="https://github.com/user-attachments/assets/ab1230e5-ca8d-4fcc-85be-1913d8f053ca" />
 
 其他特性：
-
+- 解压时显示磁盘读写速度，实时监控任务进行情况
 - 拖放文件/文件夹到窗口即可加入任务队列
 - 逻辑删除（回收站）与套娃解压中间层清理
 - 多进程并行解压，可配置 7-Zip 内部线程数
