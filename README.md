@@ -7,6 +7,7 @@
 程序基于 Python + Tkinter 开发，可打包为独立 exe，无需单独安装 Python 即可运行。
 
 ---
+<img width="1599" height="935" alt="image" src="https://github.com/user-attachments/assets/ccafc5fc-26b4-439a-83d7-984af797587a" />
 
 ## 功能概览
 
