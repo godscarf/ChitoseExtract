@@ -1,0 +1,238 @@
+# =============================================================================
+# ChitoseExtract v1.0 配置文件
+# =============================================================================
+# 使用说明：
+#   1. 点击软件「设置」按钮可直接打开本文件
+#   2. 解压密码在 password.txt（每行一个，与配置分开管理）
+#   3. 请勿用 Windows 自带「记事本」编辑，推荐 VS Code / Notepad++
+#   4. 路径请使用双反斜杠 \\ 或正斜杠 /
+#   5. 带 ↓ 的注释指向下一行配置；同行末尾带 ← 的注释指向该行
+#
+# 流水线步骤：解压 → 归档 → 过滤 → 重命名 →（可选）转flac → 写入元数据
+# 可在设置「工作流」中勾选哪些步骤参与自动后续
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# 路径设置
+# -----------------------------------------------------------------------------
+path:
+  # ↓ output — 解压后的文件输出目录（必填）
+  output: "D:/奥术魔刃/同人音声"
+  # ↓ resource — 资源库：解压后未识别到 RJ 号的作品会移入此目录（留空则保留在音声库）
+  resource: "D:/下载/临时"
+  # ↓ recycle — 逻辑删除回收站：被过滤/删除的文件会移到这里，确认无误后再手动清空
+  recycle: "D:/下载缓冲/recycle"
+
+# -----------------------------------------------------------------------------
+# 解压与删除
+# -----------------------------------------------------------------------------
+# 安全提示：建议 logical_deletion 保持 true，并把 del_after_reunzip 设为 true。
+# 确认输出无误后，再手动删除 recycle 和原始压缩包。
+
+# ↓ logical_deletion — 逻辑删除（true=移到 recycle，false=永久删除）
+logical_deletion: true
+# ↓ del_after_unzip — 首次解压完成后，是否删除原始压缩包（建议 false，防止解压失败丢源文件）
+del_after_unzip: false
+# ↓ del_after_reunzip — 套娃解压（压缩包内还有压缩包）完成后，是否删除中间层压缩包（建议 true）
+del_after_reunzip: true
+# ↓ auto_next — 点击「启动」后是否自动执行后续已勾选步骤（从侧栏选中的步骤开始）
+auto_next: true
+# ↓ workflow_steps — 流水线各步骤是否参与「自动后续」（侧栏仍可单独启动任一步）
+workflow_steps:
+  unzip: true
+  archive: true
+  filter: true
+  rename: true
+  convert_audio: true
+  tag_audio: true
+max_thread: 7
+# ↓ thread_threshold_mb — 平均单文件大于此值(MB)时，才考虑启用多进程解压
+thread_threshold_mb: 25.6
+# ↓ thread_compression_ratio — 压缩率(%)高于此值时启用多进程；任一单文件超过 200MB 仍会强制多进程
+thread_compression_ratio: 50
+# ↓ seven_z_mmt — 单次 7z x 内部解压线程数（0=禁用）；与 max_thread 多进程叠加时注意磁盘负载
+seven_z_mmt: 4
+
+# -----------------------------------------------------------------------------
+# 解压后过滤（正则匹配，命中则删除）
+# -----------------------------------------------------------------------------
+# 在「过滤」步骤执行；也可在解压前通过 pre_filter 跳过压缩包内部分文件
+filter:
+  # ↓ filter_dir — 是否同时过滤文件夹（true=删文件夹，false=只删文件）
+  filter_dir: true
+  # ↓ rules — 预设规则开关（可在设置界面勾选）
+  rules:
+    # 无 SE
+    no_se_wav: true
+    no_se_folder: true
+    no_se_all: true
+    full: true
+    reversed: true
+    wav: false
+    mp3: true
+    flac: false
+    ogg: false
+    m4a: false
+    video: false
+    image: false
+    subtitle: false
+    text_doc: false
+    macos_junk: false
+  keyword:
+    # 过滤没有 SE 音效的 WAV 文件
+    - (?:SE|音|音效|效果音|効果音)(?:[な無无]し|なし|無し|CUT).*\.WAV$|(?:NO|无|無)(?:SE|音效|效果音|効果音).*\.WAV$|(?:无效果音|無效果音|(?:效果音|効果音)(?:[な無无]し|なし|無し|CUT|カット|无|無|删减|削減|削除|去除)|(?:NO|无|無)[ _\-]?(?:SE|效果音|効果音|音效)|SE(?:[な無无]し|なし|無し|CUT|カット)|(?:SE|音|音效)(?:[な無]し|CUT|カット)|NOSE|(?:効果音|效果音|SE|音效).{0,6}(?:カット|CUT|删减|削減|削除|去除|裁剪|删减版|削減版)版?).*\.WAV$
+    - WAV.*(?:SE|音|音效|效果音|効果音)(?:[な無]し|CUT)[^\\]*$|(?:SE|音|音效|效果音|効果音)(?:[な無]し|CUT)[^\.]WAV[^\\]*$|WAV.*(?:NO|无|無)(?:SE|音效|效果音|効果音)[^\\]*$|(?:NO|无|無)(?:SE|音效|效果音|効果音)[^\.]*WAV[^\\]*$|WAV.*(?:无效果音|無效果音|(?:效果音|効果音)(?:[な無无]し|なし|無し|CUT|カット|无|無|删减|削減|削除|去除)|(?:NO|无|無)[ _\-]?(?:SE|效果音|効果音|音效)|SE(?:[な無无]し|なし|無し|CUT|カット)|(?:SE|音|音效)(?:[な無]し|CUT|カット)|NOSE|(?:効果音|效果音|SE|音效).{0,6}(?:カット|CUT|删减|削減|削除|去除|裁剪|删减版|削減版)版?)[^\\]*$|(?:无效果音|無效果音|(?:效果音|効果音)(?:[な無无]し|なし|無し|CUT|カット|无|無|删减|削減|削除|去除)|(?:NO|无|無)[ _\-]?(?:SE|效果音|効果音|音效)|SE(?:[な無无]し|なし|無し|CUT|カット)|(?:SE|音|音效)(?:[な無]し|CUT|カット)|NOSE|(?:効果音|效果音|SE|音效).{0,6}(?:カット|CUT|删减|削減|削除|去除|裁剪|删减版|削減版)版?)[^\\.]*WAV[^\\]*$
+    - '[\\/][^\\/]*(?:无效果音|無效果音|(?:效果音|効果音)(?:[な無无]し|なし|無し|CUT|カット|无|無|删减|削減|削除|去除)|(?:NO|无|無)[ _\-]?(?:SE|效果音|効果音|音效)|SE(?:[な無无]し|なし|無し|CUT|カット)|(?:SE|音|音效)(?:[な無]し|CUT|カット)|NOSE|(?:効果音|效果音|SE|音效).{0,6}(?:カット|CUT|删减|削減|削除|去除|裁剪|删减版|削減版)版?)[^\\/]*(?:[\\/]|$)'
+    - 无效果音|無效果音|(?:效果音|効果音)(?:[な無无]し|なし|無し|CUT|カット|无|無|删减|削減|削除|去除)|(?:NO|无|無)[ _\-]?(?:SE|效果音|効果音|音效)|SE(?:[な無无]し|なし|無し|CUT|カット)|(?:SE|音|音效)(?:[な無]し|CUT|カット)|NOSE|(?:効果音|效果音|SE|音效).{0,6}(?:カット|CUT|删减|削減|削除|去除|裁剪|删减版|削減版)版?
+    - FULL
+    - 反転
+    - \.MP3$
+    - (?:SE|音|音效|效果音|効果音)(?:[な無无]し|なし|無し|CUT).*\.WAV$|(?:NO|无|無)(?:SE|音效|效果音|効果音).*\.WAV$|(?:无效果音|無效果音|(?:效果音|効果音)(?:[な無无]し|なし|無し|CUT|无|無)|(?:NO|无|無)[ _\-]?(?:SE|效果音|効果音|音效)|SE(?:[な無无]し|なし|無し)|(?:SE|音|音效)(?:[な無]し|CUT)|NOSE).*\.WAV$
+    - WAV.*(?:SE|音|音效|效果音|効果音)(?:[な無]し|CUT)[^\\]*$|(?:SE|音|音效|效果音|効果音)(?:[な無]し|CUT)[^\.]WAV[^\\]*$|WAV.*(?:NO|无|無)(?:SE|音效|效果音|効果音)[^\\]*$|(?:NO|无|無)(?:SE|音效|效果音|効果音)[^\.]*WAV[^\\]*$|WAV.*(?:无效果音|無效果音|(?:效果音|効果音)(?:[な無无]し|なし|無し|CUT|无|無)|(?:NO|无|無)[ _\-]?(?:SE|效果音|効果音|音效)|SE(?:[な無无]し|なし|無し)|(?:SE|音|音效)(?:[な無]し|CUT)|NOSE)[^\\]*$|(?:无效果音|無效果音|(?:效果音|効果音)(?:[な無无]し|なし|無し|CUT|无|無)|(?:NO|无|無)[ _\-]?(?:SE|效果音|効果音|音效)|SE(?:[な無无]し|なし|無し)|(?:SE|音|音效)(?:[な無]し|CUT)|NOSE)[^\\.]*WAV[^\\]*$
+    - '[\\/](?:无效果音|無效果音|(?:效果音|効果音)(?:[な無无]し|なし|無し|CUT|无|無)|(?:NO|无|無)[ _\-]?(?:SE|效果音|効果音|音效)|SE(?:[な無无]し|なし|無し)|(?:SE|音|音效)(?:[な無]し|CUT)|NOSE)(?:[\\/]|$)'
+    - 无效果音|無效果音|(?:效果音|効果音)(?:[な無无]し|なし|無し|CUT|无|無)|(?:NO|无|無)[ _\-]?(?:SE|效果音|効果音|音效)|SE(?:[な無无]し|なし|無し)|(?:SE|音|音效)(?:[な無]し|CUT)|NOSE
+    - (?:SE|音|音效)(?:[な無]し|CUT).*\.WAV$|(?:NO|无)(?:SE|音效).*\.WAV$
+    - WAV.*(?:SE|音|音效)(?:[な無]し|CUT)[^\\]*$|(?:SE|音|音效)(?:[な無]し|CUT)[^\.]WAV[^\\]*$|WAV.*(?:NO|无)(?:SE|音效)[^\\]*$|(?:NO|无)(?:SE|音效)[^\.]*WAV[^\\]*$
+    - '[\\/](?:NO[ _\-]?SE|无\s*SE|无\s*音效|SE(?:[な無无]し|なし|無し))(?:[\\/]|$)'
+    - (?:SE|音)(?:[な無]し|CUT)|NOSE|(?:NO|无)\s*SE|无\s*音效
+    - WAV.*(?:SE|音|音效)(?:[な無]し|CUT)[^\\]*$|(?:SE|音|音效)(?:[な無]し|CUT)[^\.]WAV[^\\]*$|WAV.*(?:NO|无)(?:SE|音效)[^\\]*$|(?:NO|无)(?:SE|音效)[^\.]*WAV[^\\]*$|(?:NO[ _\-]?SE|无\s*SE|无\s*音效|SE(?:[な無无]し|なし|無し))(?:[\\/]|$)
+blacklist:
+  - epub
+  - pptx
+
+# -----------------------------------------------------------------------------
+# DLsite 元数据重命名（dlsite-doujin-renamer v0.3.2）
+# -----------------------------------------------------------------------------
+# 在「重命名」步骤执行：根据 RJ 号从 DLsite 拉取元数据并重命名文件夹
+# 修改 scraper_locale 后，请删除 dlrenamer/cache.db 以刷新缓存
+renamer:
+
+  # --- 扫描 ---
+  # ↓ scanner_max_depth — 扫描子文件夹的最大深度（文件夹名须含 RJ 号才会被处理）
+  scanner_max_depth: 2
+
+  # --- 网络 / 刮削 ---
+  # ↓ scraper_locale — 元数据语言：en_us / ja_jp / ko_kr / zh_cn / zh_tw
+  scraper_locale: zh_cn
+  # ↓ scraper_connect_timeout — 连接超时（秒）
+  scraper_connect_timeout: 10
+  # ↓ scraper_read_timeout — 读取超时（秒）
+  scraper_read_timeout: 10
+  # ↓ scraper_sleep_interval — 每次请求 DLsite 后的等待间隔（秒），避免请求过快
+  scraper_sleep_interval: 1
+  # ↓ scraper_http_proxy — HTTP 代理；设为 null 则尝试使用系统代理
+  scraper_http_proxy: http://127.0.0.1:7890
+
+  # --- 命名模板 ---
+  # 模板占位符（模板中必须包含 rjcode）：
+  #   rjcode        RJ 号
+  #   work_name     作品名
+  #   maker_id      社团 RG 号
+  #   maker_name    社团名
+  #   series_name   系列名（无系列时为空）
+  #   release_date  发售日（格式见 renamer_release_date_format）
+  #   cv_list_str   声优列表
+  #   tags_list_str 标签列表
+  #   age_cat       年龄分级（全年龄/R15/R18）
+  #
+  # 示例：age_cat[maker_name][rjcode] work_name cv_list_str
+  # 结果：(R18)[桃色CODE][RJ363096] 道草屋 なつな2... (CV なつな)
+  # ↓ renamer_template — 命名模板（占位符见上方说明）
+  renamer_template: "[maker_name] work_name [rjcode] cv_list_str"
+  # ↓ renamer_release_date_format — release_date 的日期格式，如 %y%m%d → 240315
+  renamer_release_date_format: "%y%m%d"
+  # ↓ renamer_exclude_square_brackets_in_work_name_flag — 是否移除作品名中 【】 及其内容（常用于去掉促销标题）
+  renamer_exclude_square_brackets_in_work_name_flag: true
+  # ↓ renamer_illegal_character_to_full_width_flag — Windows 非法字符处理：true=转全角，false=直接删除
+  renamer_illegal_character_to_full_width_flag: false
+
+  # --- 文件夹封面 ---
+  # ↓ renamer_make_folder_icon — 是否将文件夹图标设为 DLsite 作品封面
+  renamer_make_folder_icon: true
+  # ↓ renamer_remove_jpg_file — 设置封面后是否删除临时 cover.jpg（true=删除，false=保留）
+  renamer_remove_jpg_file: true
+
+  # --- 声优 / 标签格式 ---
+  # ↓ renamer_delimiter — cv_list_str、tags_list_str 的分隔符（不能含 \ / : * ? " < > |）
+  renamer_delimiter: " "
+  # ↓ renamer_cv_list_left — CV 列表左括号
+  renamer_cv_list_left: "(CV "
+  # ↓ renamer_cv_list_right — CV 列表右括号
+  renamer_cv_list_right: ")"
+  # ↓ renamer_tags_max_number — 写入文件名的标签最大数量（0=不限制）
+  renamer_tags_max_number: 5
+  # 标签优先级与替换：字符串=直接匹配；[原标签, 替换名]=匹配后替换
+  # 示例：作品标签为 标签6,标签5,标签3,标签2,标签1 → 输出 标签1,替换2,标签3,标签6
+  # ↓ renamer_tags_ordered_list — 标签优先级与替换规则列表
+  renamer_tags_ordered_list:
+    - 标签1
+    -   - 标签2
+        - 替换2
+    - 标签3
+
+  # --- 年龄分级 ---
+  # ↓ renamer_age_cat_map_gen — 全年龄作品的前缀文字
+  renamer_age_cat_map_gen: "全年龄"
+  # ↓ renamer_age_cat_map_r15 — R15 作品的前缀文字
+  renamer_age_cat_map_r15: "R15"
+  # ↓ renamer_age_cat_map_r18 — R18 作品的前缀文字
+  renamer_age_cat_map_r18: "R18"
+  # ↓ renamer_age_cat_left — 年龄分级左括号
+  renamer_age_cat_left: "("
+  # ↓ renamer_age_cat_right — 年龄分级右括号
+  renamer_age_cat_right: ")"
+  # ↓ renamer_age_cat_ignore_r18 — R18 作品是否省略 age_cat 前缀（音声多为 R18，建议 true）
+  renamer_age_cat_ignore_r18: true
+
+  # --- 系列名 ---
+  # ↓ renamer_series_name_left — 系列名左包裹符
+  renamer_series_name_left: ""
+  # ↓ renamer_series_name_right — 系列名右包裹符
+  renamer_series_name_right: ""
+
+  # --- 工作模式 ---
+  # RENAME = 原地重命名（常用）
+  # MOVE   = 移动到 renamer_move_root，目录结构按 renamer_move_template
+  # LINK   = 在目标目录创建符号链接（源文件夹不动，适合做种）
+  # ↓ renamer_mode — 工作模式：RENAME / MOVE / LINK
+  renamer_mode: RENAME
+  # ↓ renamer_move_root — MOVE/LINK 模式的目标根目录（路径用 / 分隔，如 D:/音声库）
+  renamer_move_root: RENAMER_MOVE_ROOT
+  # ↓ renamer_move_template — MOVE/LINK 模式下的目录结构模板
+  renamer_move_template: "maker_name/series_name/age_cat[rjcode] work_name cv_list_str"
+
+# -----------------------------------------------------------------------------
+# 转flac（转flac 步骤）
+# -----------------------------------------------------------------------------
+# 将作品目录内的 WAV/AIF 转为 FLAC；默认使用内置 flac（打包后首次运行会释放到 exe 旁 flac/）
+audio_convert:
+  # ↓ source_extensions — 待转换的源文件扩展名
+  source_extensions: [".wav", ".aif", ".aiff"]
+  # ↓ flac_compression — FLAC 压缩等级（0–12，默认 5）
+  flac_compression: 5
+  # ↓ max_workers — 转flac 并行线程数（1–32，默认 4；过高可能磁盘争用）
+  max_workers: 4
+  # ↓ delete_source — 转换成功后是否删除源文件
+  delete_source: true
+  # ↓ flac_path — 自定义 flac.exe 路径；留空则使用内置 flac，再回退到系统 PATH
+  flac_path: ""
+  # ↓ ffmpeg_fallback_path — 可选；float WAV 回退工具。留空则优先用内置 ffmpeg-minimal/，再回退系统 PATH
+  ffmpeg_fallback_path: ""
+
+# -----------------------------------------------------------------------------
+# 写入元数据（写入元数据步骤）
+# -----------------------------------------------------------------------------
+# 从 DLsite 抓取元数据，写入 FLAC/MP3/WAV 标签并嵌入封面，便于本地播放器识别
+audio_tag:
+  # ↓ extensions — 需要写入标签的音频扩展名（WAV 使用 RIFF 内嵌 ID3v2）
+  extensions: [".flac", ".mp3", ".wav"]
+  # ↓ embed_cover — 是否将封面嵌入音频文件
+  embed_cover: true
+  # ↓ save_cover_jpg — 是否在含音频的子目录保存 cover.jpg
+  save_cover_jpg: true
+  # ↓ force_retag — 是否强制覆盖已有标签
+  force_retag: false
+  # ↓ max_workers — 写入元数据并行线程数（1–32，默认 4）
+  max_workers: 4
+  # ↓ cv_max_count — 写入 Artist 的声优数量上限，超出后追加「他」
+  cv_max_count: 4

@@ -1,0 +1,101 @@
+import multiprocessing
+import sys
+
+
+def _enable_windows_dpi_awareness():
+    """
+    程序未声明 DPI 感知时，Windows 会在高分屏/系统缩放下对整个窗口位图做拉伸，
+    导致界面（尤其是图标、GIF 等小图）明显模糊。在创建任何窗口前告知系统本程序
+    自行处理 DPI 缩放，交由 Tk 按真实像素渲染，从而保持清晰。
+    """
+    if sys.platform != 'win32':
+        return
+    import ctypes
+    try:
+        # Per-Monitor v2：多屏不同缩放下也能保持清晰（Win10 1703+）
+        ctypes.windll.user32.SetProcessDpiAwarenessContext(-4)
+        return
+    except (AttributeError, OSError):
+        pass
+    try:
+        # Per-Monitor DPI aware（Win8.1+）
+        ctypes.windll.shcore.SetProcessDpiAwareness(2)
+        return
+    except (AttributeError, OSError):
+        pass
+    try:
+        # System DPI aware（Vista+，兜底）
+        ctypes.windll.user32.SetProcessDPIAware()
+    except (AttributeError, OSError):
+        pass
+
+
+# 须在 import tkinter / 创建任何窗口之前声明，否则 Windows 会把整窗位图拉伸导致图标发糊。
+_enable_windows_dpi_awareness()
+
+import app_paths  # noqa: F401 — frozen 模式下导入时即初始化运行目录
+
+import config
+import dlrenamer.ez_client
+import filter
+import gui
+import password
+import pk_logger
+import task_runner
+import unzip_process_pool
+import unzipper
+
+def _show_config_error(message: str):
+    try:
+        import tkinter as tk
+        from tkinter import messagebox
+        root = tk.Tk()
+        root.withdraw()
+        messagebox.showerror(
+            f'{app_paths.APP_NAME} — 配置错误',
+            message,
+            parent=root,
+        )
+        root.destroy()
+    except Exception:
+        print(message, file=sys.stderr)
+
+
+if __name__ == '__main__':
+    try:
+        multiprocessing.freeze_support()
+        _enable_windows_dpi_awareness()
+        app_paths.setup_runtime()
+        try:
+            conf = config.Config()
+        except config.ConfigError as err:
+            _show_config_error(str(err))
+            sys.exit(1)
+        gui.output = conf.output_path
+
+        passwords = password.read_password()
+        logger = pk_logger.Pk_logger('task_runner', 'log.txt').add_log_handler().get_logger()
+
+        # 任务队列容量与并行解压进程数对齐，避免 submit 频繁阻塞
+        resource = unzip_process_pool.ProcessResourceManager(conf.max_thread)
+
+        task_runner.logger = logger
+        task_runner.conf = conf
+        task_runner.passwords = passwords
+        task_runner.unzipper = unzipper.Unzipper(logger, resource, seven_z_mmt=conf.seven_z_mmt)
+        task_runner.filter = filter.Filter(conf.filter_kw, conf.filter_dir, logger)
+        task_runner.renamer = dlrenamer.ez_client.ensure_client(conf.renamer_config)
+
+        gui.init_ui(resource.log_queue)
+
+        pool = unzip_process_pool.ProcessPool(conf.max_thread, resource)
+
+        gui.mainloop_ui()
+
+        resource.log_queue.put(None)
+
+        pool.shutdown()
+    except Exception:
+        import app_paths
+        app_paths.append_startup_error_log('startup crash')
+        raise
