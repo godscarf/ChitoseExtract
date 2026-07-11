@@ -4,7 +4,7 @@
 ---
 图形化主程序和配置界面。
 
-主要基于[prekikoeru](https://github.com/Sakyoriii/prekikoeru)和[dlsite-doujin-renamer](https://github.com/dlsite-com-ga/dlsite-doujin-renamer)进行扩展功能，修复bug和提升易用性。
+主要基于[prekikoeru](https://github.com/Sakyoriii/prekikoeru)和[dlsite-doujin-renamer](https://github.com/yodhcn/dlsite-doujin-renamer)进行扩展功能，修复bug和提升易用性。
 
 主要开发方式为鞭打ai
 
