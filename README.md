@@ -1,9 +1,13 @@
 # ChitoseExtract v1.0
 
 面向 **DLsite 同人音声** 的 Windows 桌面批处理工具。
+---
 图形化主程序和配置界面。
+
 主要基于[prekikoeru](https://github.com/Sakyoriii/prekikoeru)和[dlsite-doujin-renamer](https://github.com/dlsite-com-ga/dlsite-doujin-renamer)进行扩展功能，修复bug和提升易用性。
+
 主要开发方式为鞭打ai
+
 ---
 
 ## 功能概览
@@ -16,7 +20,9 @@
 | **重命名** | 根据 RJ 号从 DLsite 拉取元数据，按模板重命名文件夹 |
 | **转 FLAC** | 将 WAV 转为 FLAC 保持高音质同时减少磁盘占用 |
 | **写入元数据** | 写入标签与封面，便于本地播放器识别 |
+
 所有功能都可以自选是否在流程中启用，也可单独使用任一功能
+
 ## 程序界面预览
 <img width="1456" height="1042" alt="image" src="https://github.com/user-attachments/assets/ab1230e5-ca8d-4fcc-85be-1913d8f053ca" />
 
@@ -144,38 +150,6 @@ workflow_steps:
 
 更详细的注释见 `config.yaml` 文件内说明。
 
----
-
-## 打包为 exe
-
-在项目源码目录执行：
-
-```bash
-pip install -r requirements-build.txt
-python build.py
-```
-
-或双击 `build.bat`。
-
-打包完成后输出：
-
-```
-dist/ChitoseExtract.exe
-dist/config.yaml
-dist/password.txt
-dist/7zip/
-dist/flac/
-dist/ffmpeg-minimal/    # 若本机已编译
-```
-
-将 `dist/` 内全部内容一并分发即可。
-
-可选：打包前自编译 minimal ffmpeg（处理 float WAV）：
-
-```powershell
-powershell -File scripts/build_minimal_ffmpeg.ps1
-python build.py --build-minimal-ffmpeg
-```
 
 ---
 
