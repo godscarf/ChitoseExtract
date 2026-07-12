@@ -43,8 +43,8 @@ workflow_steps:
   archive: true
   filter: true
   rename: true
-  convert_audio: true
-  tag_audio: true
+  convert_audio: false
+  tag_audio: false
 max_thread: 7
 # ↓ thread_threshold_mb — 平均单文件大于此值(MB)时，才考虑启用多进程解压
 thread_threshold_mb: 25.6

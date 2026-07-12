@@ -5,6 +5,7 @@ import sys
 
 import app_paths
 import file_ops
+import zip_wz_aes
 
 # 用于探测「仅内容加密」：错密码仍能通过 7z l 列目录
 _PROBE_INVALID_PASSWORD = '__pk_invalid_probe_password__'
@@ -54,6 +55,26 @@ class SevenZDriver:
         if multithread and self.mmt > 0:
             cmd.append(f'-mmt={self.mmt}')
 
+    def _unzip_wz_aes_zip(
+        self,
+        compress_file: str,
+        output_path: str,
+        password: str = '',
+        output_file: str | None = None,
+    ):
+        if output_file:
+            parent = output_file.split('\\')[0]
+            if os.path.join(output_path, parent) == compress_file:
+                parent += '(1)'
+                output_path = os.path.join(output_path, parent)
+        try:
+            zip_wz_aes.extract(
+                compress_file, output_path, password, member=output_file,
+            )
+        except zip_wz_aes.WzAesZipError as err:
+            raise UnzipError(str(err)) from err
+        return 0, password
+
     def unzip(self, compress_file: str, output_path: str, password: str = '', output_file: str = None,
               jap: bool = False,
               covered: bool = False, format_type: str | None = None):
@@ -61,6 +82,11 @@ class SevenZDriver:
             raise UnzipError('压缩文件未设置')
         if not output_path:
             raise UnzipError('输出路径未设置')
+        if (not covered and compress_file.lower().endswith('.zip')
+                and file_ops.zip_uses_wz_aes(compress_file)):
+            return self._unzip_wz_aes_zip(
+                compress_file, output_path, password, output_file,
+            )
         cmd = [self.location_path, 'x', '-p{}'.format(password), '-y', compress_file]
         if output_file:
             cmd.append(output_file)
@@ -130,14 +156,22 @@ class SevenZDriver:
                             "compressed": compressed,
                             "compression_ratio": round(compression_ratio, 2)
                         })
-                    elif '7zAES' in line:
+                    elif '7zAES' in line or 'WzAES' in line or 'AES-256' in line:
                         compression_ratio_info["encrypted"] = True
+
+        if namelist and compress_file.lower().endswith('.zip'):
+            if file_ops.zip_has_encrypted_entries(compress_file):
+                compression_ratio_info["encrypted"] = True
 
         return namelist, compression_ratio_info
 
     def test_archive(self, compress_file: str, password: str = '', jap: bool = False,
                      covered: bool = False, format_type: str | None = None) -> tuple[bool, str]:
         """运行 7z t 校验压缩包结构/完整性（比 7z l 更严格）。"""
+        if (not covered and compress_file.lower().endswith('.zip')
+                and file_ops.zip_uses_wz_aes(compress_file)):
+            ok, msg = zip_wz_aes.test_password(compress_file, password)
+            return ok, msg
         cmd = [self.location_path, 't', '-p{}'.format(password), compress_file]
         self._append_open_flags(cmd, jap, covered, format_type, multithread=False)
         proc = subprocess.Popen(

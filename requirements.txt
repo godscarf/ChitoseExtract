@@ -10,3 +10,4 @@ pydantic
 typing_extensions
 peewee
 mutagen
+pyzipper

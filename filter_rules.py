@@ -1,5 +1,6 @@
 """过滤规则定义与 config 解析（无 task_runner 依赖，避免循环导入）。"""
 
+import re
 from typing import Any
 
 # 预设规则：group 为 GUI 分组标题；label 为勾选项文案；patterns 为底层匹配逻辑
@@ -160,10 +161,21 @@ FILTER_RULES: tuple[dict[str, Any], ...] = (
 
 FILTER_RULE_IDS: tuple[str, ...] = tuple(rule['id'] for rule in FILTER_RULES)
 
-# 「删除整类文件 / 其他附件」仅按扩展名删文件，不因文件夹名命中而整夹删除
+# 「删除整类文件 / 其他附件」文件按扩展名匹配；勾选 filter_dir 时另用文件夹名模式
 EXTENSION_ONLY_RULE_IDS: frozenset[str] = frozenset({
     'wav', 'mp3', 'flac', 'ogg', 'm4a', 'video', 'image', 'subtitle', 'text_doc',
 })
+
+# filter_dir 开启时，整类规则可匹配的文件夹名片段（如 01_mp3、02_FLAC）
+EXTENSION_ONLY_DIR_NAME_PATTERNS: dict[str, tuple[str, ...]] = {
+    'wav': (r'WAV',),
+    'mp3': (r'MP3',),
+    'flac': (r'FLAC',),
+    'ogg': (r'OGG', r'OPUS'),
+    'm4a': (r'M4A', r'AAC'),
+    'video': (r'(?:MP4|MKV|AVI|WMV|MOV|WEBM|FLV|M4V|TS)',),
+    'image': (r'(?:JPG|JPEG|PNG|GIF|BMP|WEBP|ICO|TIFF)',),
+}
 
 DEFAULT_FILTER_RULES: dict[str, bool] = {
     rule['id']: bool(rule.get('default', True)) for rule in FILTER_RULES
@@ -201,8 +213,37 @@ def _keyword_owned_by_rule(keyword: str) -> str | None:
     return None
 
 
+def directory_name_patterns_for_rule(rule_id: str) -> tuple[str, ...]:
+    return EXTENSION_ONLY_DIR_NAME_PATTERNS.get(rule_id, ())
+
+
+def compile_directory_name_patterns(
+    keyword_list: list,
+    logger,
+) -> list[tuple[Any, str]]:
+    """从已启用的整类文件规则生成文件夹名匹配正则（仅 filter_dir 使用）。"""
+    compiled: list[tuple[Any, str]] = []
+    seen: set[str] = set()
+    for key in keyword_list:
+        if not key:
+            continue
+        owner = _keyword_owned_by_rule(key)
+        if owner is None or owner not in EXTENSION_ONLY_RULE_IDS:
+            continue
+        for pattern in directory_name_patterns_for_rule(owner):
+            if pattern in seen:
+                continue
+            try:
+                compiled.append((re.compile(pattern, re.IGNORECASE), f'{owner}:dir'))
+                seen.add(pattern)
+            except re.error as err:
+                if logger:
+                    logger.warning(f'文件夹名过滤正则无效，已跳过：[ {pattern} ] {err}')
+    return compiled
+
+
 def pattern_allows_directory_match(pattern: str) -> bool:
-    """整类扩展名规则只删文件；无 SE 等路径规则仍可匹配文件夹名。"""
+    """整类扩展名的文件模式不参与路径匹配；无 SE 等路径规则仍可匹配文件夹。"""
     owner = _keyword_owned_by_rule(pattern)
     if owner is None:
         return True

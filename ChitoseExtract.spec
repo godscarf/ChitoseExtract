@@ -1,7 +1,7 @@
 # -*- mode: python ; coding: utf-8 -*-
 from PyInstaller.utils.hooks import collect_submodules
 
-hiddenimports = ['app_paths', 'audio_convert', 'audio_tagger', 'mutagen', 'mutagen.flac', 'mutagen.id3', 'mutagen.mp3', 'ui_scaling', 'peewee', 'pydantic', 'ruamel.yaml', 'typing_extensions', 'windnd', 'win32api', 'win32con', 'win32pdh', 'pywintypes', 'PIL', 'PIL.Image', 'lxml', 'lxml.etree', 'pyquery', 'scraper.cached_scraper', 'scraper.db', 'scraper.dlsite', 'scraper.locale', 'scraper.scraper', 'scraper.translation', 'scraper.work_metadata', 'scraper.langs.en_us', 'scraper.langs.ja_jp', 'scraper.langs.ko_kr', 'scraper.langs.zh_cn', 'scraper.langs.zh_tw']
+hiddenimports = ['app_paths', 'audio_convert', 'audio_tagger', 'mutagen', 'pyzipper', 'mutagen.flac', 'mutagen.id3', 'mutagen.mp3', 'ui_scaling', 'peewee', 'pydantic', 'ruamel.yaml', 'typing_extensions', 'windnd', 'win32api', 'win32con', 'win32pdh', 'pywintypes', 'PIL', 'PIL.Image', 'lxml', 'lxml.etree', 'pyquery', 'scraper.cached_scraper', 'scraper.db', 'scraper.dlsite', 'scraper.locale', 'scraper.scraper', 'scraper.translation', 'scraper.work_metadata', 'scraper.langs.en_us', 'scraper.langs.ja_jp', 'scraper.langs.ko_kr', 'scraper.langs.zh_cn', 'scraper.langs.zh_tw']
 hiddenimports += collect_submodules('scraper')
 
 

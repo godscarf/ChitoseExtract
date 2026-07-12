@@ -201,6 +201,7 @@ def main():
         'audio_convert',
         'audio_tagger',
         'mutagen',
+        'pyzipper',
         'mutagen.flac',
         'mutagen.id3',
         'mutagen.mp3',

@@ -278,7 +278,7 @@ class Unzipper():
         if not file_ops.is_standard_archive_file(compress_file):
             return True
         ext = (zip.extension or os.path.splitext(compress_file)[1]).lower()
-        if ext not in ('.7z', '.rar'):
+        if ext not in ('.7z', '.rar', '.zip'):
             return True
         ok, _msg = self.driver.test_archive(
             compress_file=compress_file,
@@ -475,7 +475,7 @@ class Unzipper():
                 compression_ratio_info.get('encrypted')
                 and matched_password == ''
                 and file_ops.is_standard_archive_file(zip.path)
-                and (zip.extension or '').lower() in ('.7z', '.rar')
+                and (zip.extension or '').lower() in ('.7z', '.rar', '.zip')
             ):
                 return False
             namelist = list(set(namelist))
@@ -927,6 +927,9 @@ class Unzipper():
         if zip_entity.file_list:
             return True
         if zip_entity.is_encrypted() or zip_entity.compression_ratio_info.get('encrypted'):
+            return True
+        ext = (zip_entity.extension or '').lower()
+        if probe.is_candidate and ext in ('.zip', '.7z', '.rar'):
             return True
         if probe.format_type in ('7z', 'zip', 'rar', 'gzip', 'bzip2', 'xz', 'tar'):
             return True

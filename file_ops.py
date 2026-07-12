@@ -3,6 +3,7 @@ import os
 import re
 import shutil
 import stat
+import struct
 import sys
 from dataclasses import dataclass
 
@@ -105,6 +106,18 @@ _EMBEDDED_ARCHIVE_SIGNATURES = _LEADING_ARCHIVE_SIGNATURES
 
 _EMBEDDED_SCAN_LIMIT = 32 * 1024 * 1024
 _EMBEDDED_SCAN_CHUNK = 256 * 1024
+# 伪装 MP4 的 mdat 区：压缩魔数可能在 moov 之后很远（如 300MB+）
+_MP4_MDAT_ARCHIVE_SCAN_LIMIT = 512 * 1024 * 1024
+# moov 元数据里易出现 PK/1F8B 等误判字节，仅认强 archive 特征
+_STRONG_ARCHIVE_SIGNATURES = (
+    b'PK\x03\x04',
+    b'PK\x05\x06',
+    b'PK\x07\x08',
+    b'7z\xbc\xaf\x27\x1c',
+    b'Rar!\x1a\x07\x01\x00',
+    b'Rar!\x1a\x07\x00',
+    b'Rar!',
+)
 
 
 @dataclass(frozen=True)
@@ -180,6 +193,132 @@ def _archive_magic_after_ftyp_box(file_path: str) -> bool:
     except OSError:
         return False
     return _match_signature(magic, _LEADING_ARCHIVE_SIGNATURES)
+
+
+def _mp4_mdat_data_offset(file_path: str) -> int | None:
+    """返回 mdat 媒体数据起始偏移；用于 moov+mdat 式伪装压缩包。"""
+    try:
+        file_size = os.path.getsize(file_path)
+    except OSError:
+        return None
+    if file_size < 16:
+        return None
+    try:
+        with open(file_path, 'rb') as f:
+            offset = 0
+            for _ in range(64):
+                if offset + 8 > file_size:
+                    break
+                f.seek(offset)
+                header = f.read(8)
+                if len(header) < 8:
+                    break
+                box_size = int.from_bytes(header[0:4], 'big')
+                box_type = header[4:8]
+                header_len = 8
+                if box_size == 1:
+                    ext = f.read(8)
+                    if len(ext) < 8:
+                        break
+                    box_size = int.from_bytes(ext, 'big')
+                    header_len = 16
+                elif box_size == 0:
+                    box_size = file_size - offset
+                if box_size < header_len:
+                    break
+                if box_type == b'mdat':
+                    return offset + header_len
+                next_offset = offset + box_size
+                if next_offset <= offset or next_offset > file_size:
+                    break
+                offset = next_offset
+    except OSError:
+        return None
+    return None
+
+
+def _region_has_strong_archive_magic(
+    file_path: str,
+    start: int,
+    limit: int,
+) -> bool:
+    """在指定区间内搜索强压缩魔数（排除 moov 内 gzip 等弱特征误判）。"""
+    try:
+        file_size = os.path.getsize(file_path)
+    except OSError:
+        return False
+    start = max(0, start)
+    end = min(file_size, start + limit)
+    if start >= end:
+        return False
+    max_sig = max(len(sig) for sig in _STRONG_ARCHIVE_SIGNATURES)
+    overlap = max(max_sig - 1, 0)
+    try:
+        with open(file_path, 'rb') as f:
+            f.seek(start)
+            previous_tail = b''
+            while f.tell() < end:
+                to_read = min(_EMBEDDED_SCAN_CHUNK, end - f.tell())
+                chunk = f.read(to_read)
+                if not chunk:
+                    break
+                window = previous_tail + chunk
+                for sig in _STRONG_ARCHIVE_SIGNATURES:
+                    if window.find(sig) >= 0:
+                        return True
+                previous_tail = window[-overlap:] if overlap else b''
+    except OSError:
+        return False
+    return False
+
+
+def _mp4_mdat_looks_like_video_bitstream(file_path: str, mdat_offset: int) -> bool:
+    """mdat 起始已是 H.264/HEVC 等媒体码流时，深层随机 PK/Rar 字节不应视为套娃。"""
+    try:
+        with open(file_path, 'rb') as f:
+            f.seek(mdat_offset)
+            head = f.read(256)
+    except OSError:
+        return False
+    if len(head) < 5:
+        return False
+    if head.startswith(b'\x00\x00\x00\x01') or head.startswith(b'\x00\x00\x01'):
+        return True
+    if (
+        b'Lavc' in head or b'avc' in head or b'hev' in head or b'H264' in head
+        or b'x264' in head or b'h264' in head or b'H.264' in head
+    ):
+        return True
+    if len(head) >= 6 and head[2:3] == b'\x00' and b'Lav' in head:
+        return True
+    # MP4 avc1：mdat 常见 4 字节 NAL 长度前缀 + NAL 头（如 000002b10605...）
+    nlen = int.from_bytes(head[0:4], 'big')
+    if 1 <= nlen <= 4 * 1024 * 1024 and len(head) >= nlen + 4:
+        nal_type = head[4] & 0x1F
+        if nal_type in (1, 2, 3, 4, 5, 6, 7, 8, 9):
+            return True
+    return False
+
+
+def _probe_mp4_mov_stego(file_path: str, *, nested: bool) -> ArchiveProbe | None:
+    """识别 ftyp+moov+mdat 式伪装压缩包；nested 内层扫描也需命中。"""
+    if _archive_magic_after_ftyp_box(file_path):
+        format_hint = _format_hint_for_file(file_path)
+        return ArchiveProbe(True, covered=True, format_type=format_hint)
+    mdat_offset = _mp4_mdat_data_offset(file_path)
+    if mdat_offset is not None:
+        if _mp4_mdat_looks_like_video_bitstream(file_path, mdat_offset):
+            return ArchiveProbe(False)
+        if _region_has_strong_archive_magic(
+            file_path, mdat_offset, _MP4_MDAT_ARCHIVE_SCAN_LIMIT,
+        ):
+            format_hint = _format_hint_for_file(file_path)
+            return ArchiveProbe(True, covered=True, format_type=format_hint)
+        return ArchiveProbe(False)
+    if not nested and _has_embedded_archive_magic(file_path):
+        format_hint = _format_hint_for_file(file_path)
+        return ArchiveProbe(True, covered=True, format_type=format_hint)
+    return ArchiveProbe(False)
 
 
 def _is_likely_jpeg_file(file_path: str) -> bool:
@@ -421,6 +560,26 @@ def is_disguised_archive_extension(ext: str) -> bool:
     return ext.lower() in _DISGUISED_ARCHIVE_EXTENSIONS
 
 
+def zip_has_encrypted_entries(file_path: str) -> bool:
+    """检测 ZIP 内是否有加密条目（含 WinZip AES / ZipCrypto）。"""
+    try:
+        import zipfile
+        with zipfile.ZipFile(file_path, 'r') as zf:
+            return any(info.flag_bits & 0x1 for info in zf.infolist())
+    except (OSError, zipfile.BadZipFile, RuntimeError, KeyError):
+        return False
+
+
+def zip_uses_wz_aes(file_path: str) -> bool:
+    """检测 ZIP 是否使用 WinZip AES（compress_type=99）；7-Zip 对此类包验密/解压不可靠。"""
+    try:
+        import zipfile
+        with zipfile.ZipFile(file_path, 'r') as zf:
+            return any(info.compress_type == 99 for info in zf.infolist())
+    except (OSError, zipfile.BadZipFile, RuntimeError, KeyError):
+        return False
+
+
 def is_standard_archive_file(file_path: str) -> bool:
     """文件头已是压缩格式且后缀为标准压缩包（非隐写载体）。"""
     if not os.path.isfile(file_path):
@@ -561,15 +720,8 @@ def probe_archive(file_path: str, *, nested: bool = False) -> ArchiveProbe:
             format_hint = _format_hint_for_file(file_path)
             return ArchiveProbe(True, covered=False, format_type=format_hint)
         if _is_likely_video_container(file_path):
-            # 真实视频容器：包内素材（nested）不做内嵌扫描，避免 MKV 数据区 PK 误判。
             if ext in {'.mp4', '.mov'}:
-                if _archive_magic_after_ftyp_box(file_path):
-                    format_hint = _format_hint_for_file(file_path)
-                    return ArchiveProbe(True, covered=True, format_type=format_hint)
-                # 顶层拖入的 ftyp 伪装包（如 英英.mp4）：压缩魔数可能在 moov 之后。
-                if not nested and _has_embedded_archive_magic(file_path):
-                    format_hint = _format_hint_for_file(file_path)
-                    return ArchiveProbe(True, covered=True, format_type=format_hint)
+                return _probe_mp4_mov_stego(file_path, nested=nested)
             return ArchiveProbe(False)
         # 无视频容器头、仅改后缀：顶层仍可扫描内嵌魔数；包内素材保守跳过。
         if not nested and _has_embedded_archive_magic(file_path):
