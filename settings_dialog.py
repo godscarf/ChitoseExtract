@@ -21,7 +21,7 @@ from template_field_list import (
     TemplateFieldList,
     build_template_string,
     finalize_folder_name,
-    parse_cv_brackets_enabled,
+    parse_bracket_styles_from_config,
     parse_template_items,
     resolve_rename_template,
 )
@@ -745,7 +745,10 @@ class SettingsDialog(tk.Toplevel):
     def _current_template_string(self) -> str:
         if not self._template_list:
             return ''
-        return build_template_string(self._template_list.get_items())
+        return build_template_string(
+            self._template_list.get_items(),
+            self._template_list.get_bracket_styles(),
+        )
 
     def _set_preview_text(self, text: str):
         entry = self._preview_entry
@@ -764,11 +767,8 @@ class SettingsDialog(tk.Toplevel):
             return
 
         template = self._current_template_string()
-        left, right = self._template_list.get_cv_bracket_values()
-        compiled, _metadata = _compile_name_preview(template, {
-            'renamer_cv_list_left': left,
-            'renamer_cv_list_right': right,
-        })
+        preview_overrides = self._template_list.get_renamer_wrapper_overrides()
+        compiled, _metadata = _compile_name_preview(template, preview_overrides)
         if compiled:
             self._set_preview_text(compiled)
         else:
@@ -833,9 +833,12 @@ class SettingsDialog(tk.Toplevel):
         if hasattr(self, '_proxy_entry'):
             self._proxy_entry.icursor('end')
         if self._template_list:
-            items = parse_template_items(str(renamer.get('renamer_template', '')))
+            template = str(renamer.get('renamer_template', ''))
+            items = parse_template_items(template)
             self._template_list.set_items(items)
-            self._template_list.set_cv_brackets(parse_cv_brackets_enabled(renamer))
+            self._template_list.set_bracket_styles(
+                parse_bracket_styles_from_config(renamer, template),
+            )
         self._update_template_preview()
         self._refresh_validation()
 
@@ -885,9 +888,9 @@ class SettingsDialog(tk.Toplevel):
         if proxy.rstrip('/') in ('http:', 'https:'):
             # 用户没有在预填的 http:// 后面补充地址，视为未填写
             proxy = ''
-        cv_left, cv_right = '', ''
+        wrapper_overrides = {}
         if self._template_list:
-            cv_left, cv_right = self._template_list.get_cv_bracket_values()
+            wrapper_overrides = self._template_list.get_renamer_wrapper_overrides()
         filter_rules = {
             rule['id']: bool(self._vars[f'filter_rule_{rule["id"]}'].get())
             for rule in FILTER_RULES
@@ -919,8 +922,7 @@ class SettingsDialog(tk.Toplevel):
             'scraper_locale': self._vars['scraper_locale'].get().strip(),
             'scraper_http_proxy': proxy if proxy else None,
             'renamer_template': self._current_template_string(),
-            'renamer_cv_list_left': cv_left,
-            'renamer_cv_list_right': cv_right,
+            **wrapper_overrides,
         }
 
     def _save(self):

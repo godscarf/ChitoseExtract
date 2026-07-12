@@ -65,6 +65,8 @@ class Renamer(object):
             delimiter,  # 列表转字符串的分隔符
             cv_list_left, # CV列表的左侧分隔符
             cv_list_right, # CV列表的右侧分隔符
+            tags_list_left, # 标签列表的左侧包裹符
+            tags_list_right, # 标签列表的右侧包裹符
             exclude_square_brackets_in_work_name_flag,  # 设为 True 时，移除 work_name 中【】及其间的内容
             renamer_illegal_character_to_full_width_flag,  # 设为 True 时，新文件名将非法字符转为全角；为 False 时直接移除.
             make_folder_icon, # 设为 True 时，将会下载作品封面并将其设为文件夹封面
@@ -90,6 +92,8 @@ class Renamer(object):
         self.__delimiter = delimiter
         self.__cv_list_left = cv_list_left
         self.__cv_list_right = cv_list_right
+        self.__tags_list_left = tags_list_left
+        self.__tags_list_right = tags_list_right
         self.__exclude_square_brackets_in_work_name_flag = exclude_square_brackets_in_work_name_flag
         self.__renamer_illegal_character_to_full_width_flag = renamer_illegal_character_to_full_width_flag
         self.__make_folder_icon = make_folder_icon
@@ -184,11 +188,15 @@ class Renamer(object):
                     tags_list.append(i)
             tags_list = tags_list[: self.__tags_option['max_number']]  # 数量限制
             tags_list = list(map(self.__format_filename_str, tags_list))
-            tags_list_str = self.__delimiter.join(tags_list)  # 转字符串，加分隔符
+            tags_list_str = (
+                self.__tags_list_left + self.__delimiter.join(tags_list) + self.__tags_list_right
+                if tags_list else ''
+            )
             new_name = new_name.replace('tags_list_str', tags_list_str)
 
         # 占位符为空时（如无系列名的 [series_name]）移除残留空方括号
         new_name = re.sub(r'\[\s*\]', '', new_name)
+        new_name = re.sub(r'\(\s*\)', '', new_name)
         new_name = re.sub(r'\s{2,}', ' ', new_name)
 
         # 文件名中不能包含 Windows 系统的保留字符

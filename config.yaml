@@ -36,7 +36,7 @@ del_after_unzip: false
 # ↓ del_after_reunzip — 套娃解压（压缩包内还有压缩包）完成后，是否删除中间层压缩包（建议 true）
 del_after_reunzip: true
 # ↓ auto_next — 点击「启动」后是否自动执行后续已勾选步骤（从侧栏选中的步骤开始）
-auto_next: true
+auto_next: false
 # ↓ workflow_steps — 流水线各步骤是否参与「自动后续」（侧栏仍可单独启动任一步）
 workflow_steps:
   unzip: true
@@ -159,6 +159,10 @@ renamer:
   renamer_cv_list_left: "(CV "
   # ↓ renamer_cv_list_right — CV 列表右括号
   renamer_cv_list_right: ")"
+  # ↓ renamer_tags_list_left — 标签列表左包裹符（留空则不包裹；设为 [ 可显示为 [标签1 标签2]）
+  renamer_tags_list_left: "["
+  # ↓ renamer_tags_list_right — 标签列表右包裹符（设为 ) 可显示为 (标签1 标签2)）
+  renamer_tags_list_right: "]"
   # ↓ renamer_tags_max_number — 写入文件名的标签最大数量（0=不限制）
   renamer_tags_max_number: 5
   # 标签优先级与替换：字符串=直接匹配；[原标签, 替换名]=匹配后替换

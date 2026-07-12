@@ -31,6 +31,8 @@ class Config(TypedDict):
     renamer_delimiter: FilenameStr  # 分隔符
     renamer_cv_list_left: FilenameStr
     renamer_cv_list_right: FilenameStr
+    renamer_tags_list_left: FilenameStr
+    renamer_tags_list_right: FilenameStr
     renamer_tags_max_number: int  # 标签个数上限
     renamer_tags_ordered_list: list[Union[str, list[str]]]
     renamer_age_cat_map_gen: str
@@ -68,6 +70,8 @@ DEFAULT_CONFIG: Config = {
     'renamer_delimiter': " ",
     'renamer_cv_list_left': "(CV ",
     'renamer_cv_list_right': ")",
+    'renamer_tags_list_left': "",
+    'renamer_tags_list_right': "",
     'renamer_tags_max_number': 5,
     'renamer_tags_ordered_list': ["标签1", ["标签2", "替换2"], "标签3"],  # 标签顺序列表，每一项可为字符串或[原标签,替换名]
     'renamer_age_cat_map_gen': "全年龄",
@@ -126,10 +130,11 @@ class ConfigFile(object):
 
 
 def _normalize_renamer_config(config_dict: dict) -> dict:
-    """将旧版键名迁移为统一命名。"""
-    normalized = dict(config_dict)
-    if 'scanner_max_depth' not in normalized and 'scaner_max_depth' in normalized:
-        normalized['scanner_max_depth'] = normalized.pop('scaner_max_depth')
+    """将旧版键名迁移为统一命名，并补全缺失的默认值。"""
+    normalized = dict(DEFAULT_CONFIG)
+    normalized.update(config_dict)
+    if 'scanner_max_depth' not in config_dict and 'scaner_max_depth' in config_dict:
+        normalized['scanner_max_depth'] = config_dict['scaner_max_depth']
     return normalized
 
 

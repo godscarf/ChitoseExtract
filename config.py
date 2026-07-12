@@ -341,6 +341,10 @@ def save_settings(updates: dict) -> tuple[bool, str | None]:
             'renamer_template': 'renamer_template',
             'renamer_cv_list_left': 'renamer_cv_list_left',
             'renamer_cv_list_right': 'renamer_cv_list_right',
+            'renamer_tags_list_left': 'renamer_tags_list_left',
+            'renamer_tags_list_right': 'renamer_tags_list_right',
+            'renamer_age_cat_left': 'renamer_age_cat_left',
+            'renamer_age_cat_right': 'renamer_age_cat_right',
         }
         for update_key, yaml_key in renamer_keys.items():
             if update_key in updates:
