@@ -71,7 +71,7 @@ class TestMp3LosslessGuard(unittest.TestCase):
         f = Filter([r'\.MP3$'], True, logger=_NullLogger())
         self.assertTrue(f._skip_mp3_without_lossless(r'D:\a\track.mp3', has_lossless=False))
         self.assertFalse(f._skip_mp3_without_lossless(r'D:\a\track.mp3', has_lossless=True))
-        self.assertFalse(f._skip_mp3_without_lossless(r'D:\a\01_mp3', has_lossless=False))
+        self.assertFalse(f._skip_mp3_without_lossless(r'D:\a\cover.jpg', has_lossless=False))
 
     def test_scope_detects_flac(self):
         from filter import Filter
