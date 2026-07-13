@@ -345,10 +345,16 @@ def save_settings(updates: dict) -> tuple[bool, str | None]:
             'renamer_tags_list_right': 'renamer_tags_list_right',
             'renamer_age_cat_left': 'renamer_age_cat_left',
             'renamer_age_cat_right': 'renamer_age_cat_right',
+            'renamer_rjcode_display_locales': 'renamer_rjcode_display_locales',
         }
         for update_key, yaml_key in renamer_keys.items():
             if update_key in updates:
-                renamer_section[yaml_key] = updates[update_key]
+                value = updates[update_key]
+                if update_key == 'renamer_rjcode_display_locales':
+                    from scraper.rjcode_locales import normalize_display_locales
+                    renamer_section[yaml_key] = normalize_display_locales(value)
+                else:
+                    renamer_section[yaml_key] = value
 
         if 'flac_compression' in updates or 'flac_max_workers' in updates:
             audio_section = document.setdefault('audio_convert', CommentedMap())

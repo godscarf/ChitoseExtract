@@ -15,7 +15,7 @@ from mutagen.mp3 import MP3
 from mutagen.wave import WAVE
 
 import file_ops
-from scraper.work_metadata import WorkMetadata
+from scraper.work_metadata import WorkMetadata, CV_LIST_SEPARATOR
 
 
 @dataclass(frozen=True)
@@ -85,7 +85,7 @@ def _format_cv_list(cvs: list[str], max_count: int) -> str:
         return ''
     if max_count > 0 and len(items) > max_count:
         items = items[:max_count] + ['他']
-    return ' '.join(items)
+    return CV_LIST_SEPARATOR.join(items)
 
 
 def _format_title(title: str) -> str:

@@ -53,6 +53,7 @@ SAMPLE_PREVIEW_METADATA: WorkMetadata = {
     'tags': ['舔耳', 'ASMR', '姐姐', '治愈', '耳舐め'],
     'cvs': ['なつな'],
     'cover_url': '',
+    'rjcodes_by_locale': {'ja_jp': 'RJ363095', 'zh_cn': 'RJ363096'},
 }
 
 
@@ -682,7 +683,7 @@ class SettingsDialog(tk.Toplevel):
         )
         combo.pack(side=tk.LEFT)
         ttk.Label(
-            locale_frame, text='  修改语言后建议删除 dlrenamer/cache.db',
+            locale_frame, text='  修改语言后重新刮削时会自动刷新该作品的缓存',
             style='Muted.TLabel', background=COLORS['surface'],
         ).pack(side=tk.LEFT, padx=(8, 0))
         self._add_labeled_row(section, 0, '元数据语言', locale_frame)
@@ -768,6 +769,7 @@ class SettingsDialog(tk.Toplevel):
 
         template = self._current_template_string()
         preview_overrides = self._template_list.get_renamer_wrapper_overrides()
+        preview_overrides['renamer_rjcode_display_locales'] = self._template_list.get_rjcode_display_locales()
         compiled, _metadata = _compile_name_preview(template, preview_overrides)
         if compiled:
             self._set_preview_text(compiled)
@@ -838,6 +840,9 @@ class SettingsDialog(tk.Toplevel):
             self._template_list.set_items(items)
             self._template_list.set_bracket_styles(
                 parse_bracket_styles_from_config(renamer, template),
+            )
+            self._template_list.set_rjcode_display_locales(
+                renamer.get('renamer_rjcode_display_locales'),
             )
         self._update_template_preview()
         self._refresh_validation()
@@ -922,6 +927,9 @@ class SettingsDialog(tk.Toplevel):
             'scraper_locale': self._vars['scraper_locale'].get().strip(),
             'scraper_http_proxy': proxy if proxy else None,
             'renamer_template': self._current_template_string(),
+            'renamer_rjcode_display_locales': (
+                self._template_list.get_rjcode_display_locales() if self._template_list else []
+            ),
             **wrapper_overrides,
         }
 

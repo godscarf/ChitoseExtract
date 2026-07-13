@@ -43,6 +43,7 @@ class Config(TypedDict):
     renamer_age_cat_ignore_r18: bool
     renamer_series_name_left: FilenameStr
     renamer_series_name_right: FilenameStr
+    renamer_rjcode_display_locales: list[str]
     renamer_mode: Literal["RENAME", "MOVE", "LINK"]
     renamer_move_root: str
     renamer_move_template: RjcodeStr
@@ -82,6 +83,7 @@ DEFAULT_CONFIG: Config = {
     'renamer_age_cat_ignore_r18': True,
     'renamer_series_name_left': "",
     'renamer_series_name_right': "",
+    'renamer_rjcode_display_locales': [],
     'renamer_mode': 'RENAME',
     'renamer_move_root': 'RENAMER_MOVE_ROOT',
     'renamer_move_template': 'maker_name/series_name/age_cat[rjcode] work_name cv_list_str'
@@ -135,6 +137,9 @@ def _normalize_renamer_config(config_dict: dict) -> dict:
     normalized.update(config_dict)
     if 'scanner_max_depth' not in config_dict and 'scaner_max_depth' in config_dict:
         normalized['scanner_max_depth'] = config_dict['scaner_max_depth']
+    if not normalized.get('renamer_rjcode_display_locales') and normalized.get('renamer_include_alt_rjcodes'):
+        normalized['renamer_rjcode_display_locales'] = ['ja_jp', 'zh_cn', 'zh_tw']
+    normalized.pop('renamer_include_alt_rjcodes', None)
     return normalized
 
 

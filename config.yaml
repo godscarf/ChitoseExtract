@@ -36,15 +36,15 @@ del_after_unzip: false
 # ↓ del_after_reunzip — 套娃解压（压缩包内还有压缩包）完成后，是否删除中间层压缩包（建议 true）
 del_after_reunzip: true
 # ↓ auto_next — 点击「启动」后是否自动执行后续已勾选步骤（从侧栏选中的步骤开始）
-auto_next: false
+auto_next: true
 # ↓ workflow_steps — 流水线各步骤是否参与「自动后续」（侧栏仍可单独启动任一步）
 workflow_steps:
   unzip: true
   archive: true
   filter: true
   rename: true
-  convert_audio: false
-  tag_audio: false
+  convert_audio: true
+  tag_audio: true
 max_thread: 7
 # ↓ thread_threshold_mb — 平均单文件大于此值(MB)时，才考虑启用多进程解压
 thread_threshold_mb: 25.6
@@ -198,7 +198,10 @@ renamer:
   # RENAME = 原地重命名（常用）
   # MOVE   = 移动到 renamer_move_root，目录结构按 renamer_move_template
   # LINK   = 在目标目录创建符号链接（源文件夹不动，适合做种）
-  # ↓ renamer_mode — 工作模式：RENAME / MOVE / LINK
+  # ↓ renamer_rjcode_display_locales — RJ 号显示哪些语言版本：ja_jp(日) / zh_cn(简) / zh_tw(繁)；无对应数据则跳过
+  renamer_rjcode_display_locales:
+    - ja_jp
+    - zh_cn
   renamer_mode: RENAME
   # ↓ renamer_move_root — MOVE/LINK 模式的目标根目录（路径用 / 分隔，如 D:/音声库）
   renamer_move_root: RENAMER_MOVE_ROOT

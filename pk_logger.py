@@ -7,6 +7,22 @@ gui = None
 _gui_handler = None
 
 
+class SafeRotatingFileHandler(handlers.RotatingFileHandler):
+    """Windows 下多进程/日志被占用时，轮转失败不应导致程序崩溃。"""
+
+    def doRollover(self):
+        try:
+            super().doRollover()
+        except OSError:
+            pass
+
+    def emit(self, record):
+        try:
+            super().emit(record)
+        except OSError:
+            pass
+
+
 class LogHandler(logging.Handler):
     def __init__(self, name):
         logging.Handler.__init__(self)
@@ -48,8 +64,8 @@ class Pk_logger(object):
         self.__logger.setLevel(logging.DEBUG)
         self.__logger.propagate = False
 
-        if file and not _has_handler(self.__logger, handlers.RotatingFileHandler):
-            file_handler = handlers.RotatingFileHandler(file, 'a', 1240 * 1240 * 5, 3, encoding='utf-8')
+        if file and not _has_handler(self.__logger, SafeRotatingFileHandler):
+            file_handler = SafeRotatingFileHandler(file, 'a', 1240 * 1240 * 5, 3, encoding='utf-8')
             file_handler.setFormatter(default_formatter)
             self.__logger.addHandler(file_handler)
 

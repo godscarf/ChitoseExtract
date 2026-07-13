@@ -10,6 +10,7 @@ from requests.exceptions import RequestException, ConnectionError, HTTPError, Ti
 
 from scanner import Scanner
 from scraper import WorkMetadata, Scraper
+from scraper.work_metadata import CV_LIST_SEPARATOR
 from ostool import move_folder, copy_with_symlink, normalize_path
 
 import win32api
@@ -52,6 +53,51 @@ def _get_logger():
     return logger
 
 
+from scraper.rjcode_locales import RJCODE_DISPLAY_LOCALES, normalize_display_locales, normalize_workno
+
+
+def detect_rjcode_wrap_style(template: str) -> str:
+    if re.search(r'\[rjcode\]', template or ''):
+        return 'square'
+    if re.search(r'\(rjcode\)', template or ''):
+        return 'round'
+    return 'none'
+
+
+def format_rjcode_replacement(
+        metadata: WorkMetadata,
+        *,
+        display_locales: list[str] | tuple[str, ...] | None,
+        delimiter: str,
+        wrap_style: str,
+) -> str:
+    selected = normalize_display_locales(display_locales)
+    if not selected:
+        primary = normalize_workno(metadata.get('rjcode'))
+        return primary or ''
+
+    by_locale = metadata.get('rjcodes_by_locale') or {}
+    codes: list[str] = []
+    seen: set[str] = set()
+    for locale in RJCODE_DISPLAY_LOCALES:
+        if locale not in selected:
+            continue
+        code = normalize_workno(by_locale.get(locale))
+        if code and code not in seen:
+            codes.append(code)
+            seen.add(code)
+    if not codes:
+        primary = normalize_workno(metadata.get('rjcode'))
+        return primary or ''
+    if len(codes) == 1:
+        return codes[0]
+    if wrap_style == 'square':
+        return ']['.join(codes)
+    if wrap_style == 'round':
+        return ')('.join(codes)
+    return delimiter.join(codes)
+
+
 class Renamer(object):
     logger = _get_logger()
 
@@ -81,6 +127,7 @@ class Renamer(object):
             age_cat_ignore_r18: bool,
             series_name_left: str,
             series_name_right: str,
+            rjcode_display_locales: list[str],
             mode: str,  # RENAME/MOVE/LINK
             move_root: str,
             move_template: str
@@ -107,6 +154,7 @@ class Renamer(object):
         self.__age_cat_ignore_r18 = age_cat_ignore_r18
         self.__series_name_left = series_name_left
         self.__series_name_right = series_name_right
+        self.__rjcode_display_locales = list(rjcode_display_locales or [])
         self.__mode = mode
         self.__move_root = move_root
         self.__move_template = move_template
@@ -145,10 +193,17 @@ class Renamer(object):
         maker_name = self.__format_filename_str(metadata['maker_name'])
         series_name = self.__format_filename_str(metadata['series_name'])
 
-        new_name = template.replace('rjcode', metadata['rjcode'])
-        new_name = new_name.replace('work_name', work_name)
+        new_name = template.replace('work_name', work_name)
         new_name = new_name.replace('maker_id', metadata['maker_id'])
         new_name = new_name.replace('maker_name', maker_name)
+        if 'rjcode' in template:
+            rjcode_str = format_rjcode_replacement(
+                metadata,
+                display_locales=self.__rjcode_display_locales,
+                delimiter=self.__delimiter,
+                wrap_style=detect_rjcode_wrap_style(template),
+            )
+            new_name = new_name.replace('rjcode', rjcode_str)
         if 'age_cat' in template:
             if self.__age_cat_ignore_r18 and metadata['age_category'] == 'R18':
                 new_name = new_name.replace('age_cat', "")
@@ -170,7 +225,7 @@ class Renamer(object):
             new_name = new_name.replace('release_date', release_date_obj.strftime(self.__release_date_format))
 
         cv_list = list(map(self.__format_filename_str, metadata['cvs']))  # cv列表
-        cv_list_str = self.__cv_list_left + self.__delimiter.join(cv_list) + self.__cv_list_right if len(cv_list) > 0 else ''
+        cv_list_str = self.__cv_list_left + CV_LIST_SEPARATOR.join(cv_list) + self.__cv_list_right if len(cv_list) > 0 else ''
         new_name = new_name.replace('cv_list_str', cv_list_str)
 
         if "tags_list_str" in template:  # 标签列表

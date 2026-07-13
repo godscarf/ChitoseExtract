@@ -6,6 +6,7 @@ from urllib.request import getproxies
 from typing import Union
 
 import requests
+from requests.exceptions import RequestException
 from pyquery import PyQuery as pq
 
 from scraper.dlsite import Dlsite
@@ -13,6 +14,14 @@ from scraper.locale import Locale
 from scraper.work_metadata import WorkMetadata
 
 from PIL import Image as img
+
+
+from scraper.rjcode_locales import (
+    METADATA_SCHEMA_VERSION,
+    collect_rjcodes_by_locale,
+    normalize_workno,
+    resolve_edition_workno_for_locale,
+)
 
 
 def _getproxies():
@@ -38,6 +47,10 @@ class Scraper(object):
             # 获取系统代理
             proxies = _getproxies()
         self.__proxies = proxies
+
+    @property
+    def locale(self) -> Locale:
+        return self.__locale
 
     def __request_work_page(self, rjcode: str):
         url = Dlsite.compile_work_page_url(rjcode)
@@ -75,14 +88,48 @@ class Scraper(object):
         return metadata
 
     def __scrape_metadata_from_product_api(self, workno: str):
-        product_info = self.__request_product_api(workno)
+        request_cache: dict[str, dict] = {}
+
+        def fetch_product_info(rj: str) -> dict:
+            code = rj.upper()
+            if code not in request_cache:
+                request_cache[code] = self.__request_product_api(code)
+            return request_cache[code]
+
+        def try_fetch_product_info(rj: str) -> dict | None:
+            code = rj.upper()
+            if code in request_cache:
+                return request_cache[code]
+            try:
+                request_cache[code] = fetch_product_info(code)
+                return request_cache[code]
+            except RequestException:
+                request_cache[code] = None
+                return None
+
+        scanned_workno = workno.upper()
+        seed_info = fetch_product_info(scanned_workno)
+        localized_workno = resolve_edition_workno_for_locale(seed_info, self.__locale.name)
+        product_info = seed_info
+        if localized_workno and localized_workno != normalize_workno(seed_info.get('workno')):
+            localized_info = try_fetch_product_info(localized_workno)
+            if localized_info is not None:
+                product_info = localized_info
 
         translation_info = product_info.get('translation_info', None)
         original_workno = translation_info.get('original_workno', None) if translation_info else None
-        original_product_info = self.__request_product_api(original_workno) if original_workno else None
+        original_product_info = None
+        if original_workno:
+            original_key = normalize_workno(original_workno)
+            if original_key and original_key in request_cache:
+                original_product_info = request_cache[original_key]
+            else:
+                original_product_info = try_fetch_product_info(original_workno)
 
         metadata: WorkMetadata = {
-            'rjcode': product_info['workno'],
+            'metadata_schema_version': METADATA_SCHEMA_VERSION,
+            'scraper_locale': self.__locale.name,
+            'rjcode': scanned_workno,
             'work_name': product_info['work_name'],
             'maker_id': original_product_info['maker_id'] if original_product_info else product_info['maker_id'],
             'maker_name': original_product_info['maker_name'] if original_product_info else product_info['maker_name'],
@@ -92,7 +139,13 @@ class Scraper(object):
             'age_category': '',
             'tags': [],
             'cvs': [],
-            'cover_url': 'https:' + product_info['image_main']['url']
+            'cover_url': 'https:' + product_info['image_main']['url'],
+            'rjcodes_by_locale': collect_rjcodes_by_locale(
+                seed_info,
+                original_product_info,
+                try_fetch_product_info,
+                scraper_locale=self.__locale.name,
+            ),
         }
 
         # tags

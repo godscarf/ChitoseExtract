@@ -3,7 +3,6 @@ import json
 import logging
 import os
 import traceback
-from logging.handlers import RotatingFileHandler
 
 from renamer import Renamer, RenameDuplicateError
 
@@ -35,7 +34,7 @@ class ez_client:
         Renamer.logger.setLevel(logging.DEBUG)
         Renamer.logger.propagate = False
 
-        file_handler = RotatingFileHandler('log.txt', 'a', 1240 * 1240 * 5, 3, encoding='utf-8')
+        file_handler = pk_logger.SafeRotatingFileHandler('log.txt', 'a', 1240 * 1240 * 5, 3, encoding='utf-8')
         file_handler.setFormatter(pk_logger.default_formatter)
         Renamer.logger.addHandler(file_handler)
         pk_logger.attach_gui_handler(Renamer.logger)

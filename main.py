@@ -61,10 +61,40 @@ def _show_config_error(message: str):
         print(message, file=sys.stderr)
 
 
+def _acquire_single_instance() -> bool:
+    """避免重复启动导致 log 文件争用、界面无响应。"""
+    if sys.platform != 'win32':
+        return True
+    import ctypes
+    kernel32 = ctypes.windll.kernel32
+    kernel32.CreateMutexW(None, False, 'Local\\ChitoseExtract.v1.0.SingleInstance')
+    return kernel32.GetLastError() != 183
+
+
+def _show_already_running():
+    try:
+        import tkinter as tk
+        from tkinter import messagebox
+        root = tk.Tk()
+        root.withdraw()
+        messagebox.showinfo(
+            app_paths.APP_TITLE,
+            '程序已在运行中。\n'
+            '若看不到窗口，请在任务管理器中结束 pythonw.exe / python3.13 后重试。',
+            parent=root,
+        )
+        root.destroy()
+    except Exception:
+        pass
+
+
 if __name__ == '__main__':
     try:
         multiprocessing.freeze_support()
         _enable_windows_dpi_awareness()
+        if not _acquire_single_instance():
+            _show_already_running()
+            sys.exit(0)
         app_paths.setup_runtime()
         try:
             conf = config.Config()

@@ -9,6 +9,7 @@ from config_file import verify_config_dict
 from renamer import Renamer
 from scanner import Scanner
 from scraper import Locale, CachedScraper
+from scraper.rjcode_locales import normalize_display_locales
 
 _scraper_singleton: Optional[CachedScraper] = None
 _active_scraper_key: Optional[tuple] = None
@@ -74,6 +75,8 @@ def _build_renamer(config: dict[str, Any]) -> Renamer:
         delimiter=config['renamer_delimiter'],
         cv_list_left=config['renamer_cv_list_left'],
         cv_list_right=config['renamer_cv_list_right'],
+        tags_list_left=config['renamer_tags_list_left'],
+        tags_list_right=config['renamer_tags_list_right'],
         exclude_square_brackets_in_work_name_flag=config['renamer_exclude_square_brackets_in_work_name_flag'],
         renamer_illegal_character_to_full_width_flag=config['renamer_illegal_character_to_full_width_flag'],
         make_folder_icon=config['renamer_make_folder_icon'],
@@ -90,6 +93,9 @@ def _build_renamer(config: dict[str, Any]) -> Renamer:
         move_template=config['renamer_move_template'],
         series_name_left=config['renamer_series_name_left'],
         series_name_right=config['renamer_series_name_right'],
+        rjcode_display_locales=normalize_display_locales(
+            config.get('renamer_rjcode_display_locales'),
+        ),
     )
 
 

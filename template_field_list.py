@@ -49,6 +49,8 @@ BRACKET_STYLE_ROUND = 'round'
 CV_ROUND_LEFT = '(CV '
 CV_ROUND_RIGHT = ')'
 
+from scraper.rjcode_locales import RJCODE_DISPLAY_LOCALES, RJCODE_LOCALE_LABELS, normalize_display_locales
+
 
 def parse_bracket_style_from_wrappers(left: str, right: str, *, field: str) -> str:
     left = str(left or '')
@@ -264,8 +266,28 @@ class TemplateFieldList(tk.Frame):
         self._bracket_vars: dict[str, dict[str, tk.BooleanVar]] = {}
         self._bracket_sync_guard = False
         self._bracket_last_toggle: dict[str, str] = {}
+        self._rjcode_locale_vars: dict[str, tk.BooleanVar] = {}
 
         self.columnconfigure(0, weight=1)
+
+    def _ensure_rjcode_locale_var(self, locale: str) -> tk.BooleanVar:
+        if locale not in self._rjcode_locale_vars:
+            var = tk.BooleanVar(value=False)
+            var.trace_add('write', lambda *_: self._notify_change())
+            self._rjcode_locale_vars[locale] = var
+        return self._rjcode_locale_vars[locale]
+
+    def set_rjcode_display_locales(self, locales: list[str] | tuple[str, ...] | None):
+        selected = set(normalize_display_locales(locales))
+        for locale in RJCODE_DISPLAY_LOCALES:
+            self._ensure_rjcode_locale_var(locale).set(locale in selected)
+
+    def get_rjcode_display_locales(self) -> list[str]:
+        return normalize_display_locales([
+            locale
+            for locale in RJCODE_DISPLAY_LOCALES
+            if self._rjcode_locale_vars.get(locale) and self._rjcode_locale_vars[locale].get()
+        ])
 
     def _ensure_bracket_vars(self, key: str) -> dict[str, tk.BooleanVar]:
         if key not in self._bracket_vars:
@@ -363,6 +385,13 @@ class TemplateFieldList(tk.Frame):
             _settings_checkbutton(frame, '显示()', vars_['round']).pack(
                 side=tk.LEFT, padx=(0, 8), pady=4,
             )
+        if key == 'rjcode':
+            for locale in RJCODE_DISPLAY_LOCALES:
+                _settings_checkbutton(
+                    frame,
+                    RJCODE_LOCALE_LABELS[locale],
+                    self._ensure_rjcode_locale_var(locale),
+                ).pack(side=tk.LEFT, padx=(0, 8), pady=4)
 
         tk.Label(
             frame, text=key, bg=_COLORS['surface'], fg=_COLORS['text_muted'],
