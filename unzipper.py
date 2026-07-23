@@ -1,4 +1,4 @@
-import os
+﻿import os
 import re
 
 from enum import Enum
@@ -278,16 +278,22 @@ class Unzipper():
         if not file_ops.is_standard_archive_file(compress_file):
             return True
         ext = (zip.extension or os.path.splitext(compress_file)[1]).lower()
-        if ext not in ('.7z', '.rar', '.zip'):
-            return True
-        ok, _msg = self.driver.test_archive(
-            compress_file=compress_file,
-            password=password,
-            jap=zip.jap,
-            covered=covered,
-            format_type=format_type,
-        )
-        return ok
+        if ext == '.zip' and not covered and not format_type:
+            # 纯正 .zip（非覆盖格式/非自动检测）：
+            # 传统 ZIP 2.0 加密（内容仅加密）：空密码能列目录但不代表密码正确
+            # AES 加密：7z l 需要正确密码才能列出
+            # 因此不需要跑 7z t 来确认，直接拒绝空密码即可
+            return bool(password)
+        if ext in ('.7z', '.rar', '.zip'):
+            ok, _msg = self.driver.test_archive(
+                compress_file=compress_file,
+                password=password,
+                jap=zip.jap,
+                covered=covered,
+                format_type=format_type,
+            )
+            return ok
+        return True
 
     _MANUAL_7Z_LOG = (
         '特殊 7z 压缩包（仅内容加密 + 单 Block 大包），已跳过密码库试密；'
